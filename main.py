@@ -5,6 +5,17 @@ import socket
 sock = socket.socket()
 
 class cCurl:
+    def get_method(self, api_request):
+        method = 'GET'
+        if '-X' in api_request:
+            method = api_request[api_request.index('-X')+1]
+            api_request.pop(api_request.index('-X')+1)
+            api_request.remove('-X')
+            
+        
+        print(api_request)
+        return method
+
     def deconstruct_api_request(self, api_request):
         is_verbose = False
         if '-v' in api_request:
@@ -16,12 +27,14 @@ class cCurl:
         protocol, rest_of_the_url = api_request[0].split('//')
         protocol_version = "1.1"
         
-        host, method = rest_of_the_url.split('/')
-        return protocol, protocol_version, host, method, is_verbose
+        host = rest_of_the_url.split('/')[0]
+        return protocol, protocol_version, host, is_verbose
 
     def __init__(self, api_request):
-
-        protocol, protocol_version, host, method, is_verbose = self.deconstruct_api_request(api_request)
+        
+        method = self.get_method(api_request)
+        protocol, protocol_version, host, is_verbose = self.deconstruct_api_request(api_request)
+        
 
         self.protocol = protocol
         self.protocol_version = protocol_version
@@ -49,6 +62,8 @@ class cCurl:
         +'/'+self.protocol_version+'\r\n'+'Host:www.'+self.host+'\r\n\r\n'
         
         data = data.encode('utf-8')
+        print("data to be sent: ")
+        print(data)
         return data
         
     def send_request(self):
@@ -65,6 +80,7 @@ class cCurl:
 
 if __name__ == '__main__':
     args = sys.argv[1:]
+    print("Args: ",args)
     c = cCurl(args)
     response = c.send_request()
     c.show_response(response)
