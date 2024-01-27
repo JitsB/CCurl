@@ -2,48 +2,69 @@ import sys
 from turtle import exitonclick
 import socket
 
-url = sys.argv[1:]
-print("Url: ", url)
-verbose = False
-
-if '-v' in url:
-    verbose=True
-    url = url[1]
-else:
-    url = url[0]
-
-print("URL: ", url)
-protocol = url.split('//')[0]
-protocol_version = "1.1"
-rest_of_the_url = url.split('//')[1]
-
-host = rest_of_the_url.split('/')[0]
-method = rest_of_the_url.split('/')[1]
-
-# print("protocol: ", protocol)
-# print("host: ", host)
-# print("Method: ", method)
-
-data_to_be_sent = method.upper() + " / "+protocol[0:-1].upper()+'/'+protocol_version+'\r\n'+'Host:www.'+host+'\r\n\r\n'
-
-print("data to be sent: ")
-print(data_to_be_sent.encode('utf-8'))
-
 sock = socket.socket()
-sock.connect((host, 80))
 
-# print('request: ')
-# print(data_to_be_sent.encode('utf-8'))
-sock.send(data_to_be_sent.encode('utf-8'))
+class cCurl:
+    def deconstruct_api_request(self, api_request):
+        is_verbose = False
+        if '-v' in api_request:
+            is_verbose = True
+            api_request.remove('-v')
+        else:
+            is_verbose = False
 
-data = ''
-data = sock.recv(4096).decode()
+        protocol, rest_of_the_url = api_request[0].split('//')
+        protocol_version = "1.1"
+        
+        host, method = rest_of_the_url.split('/')
+        return protocol, protocol_version, host, method, is_verbose
 
-headers, body = data.split('\r\n\r\n', 1)
+    def __init__(self, api_request):
 
-if verbose:
-    print("Verbose: ")
-    print(headers+body)
-else:
-    print("Non verbose: ")
-    print(body)
+        protocol, protocol_version, host, method, is_verbose = self.deconstruct_api_request(api_request)
+
+        self.protocol = protocol
+        self.protocol_version = protocol_version
+        self.is_verbose = is_verbose
+        self.host = host
+        self.method = method
+    
+    def deconstruct_server_response(self, response):
+        headers, body = response.split('\r\n\r\n', 1)
+        return headers, body
+    
+    def show_response(self, response):
+        headers, body = self.deconstruct_server_response(response)
+        if self.is_verbose:
+            print("Headers: ")
+            print(headers)
+            print("Body: ")
+            print(body)
+        else:
+            print("Body: ")
+            print(body)
+    
+    def get_encoded_data(self):
+        data = self.method.upper() + " / "+self.protocol[0:-1].upper()\
+        +'/'+self.protocol_version+'\r\n'+'Host:www.'+self.host+'\r\n\r\n'
+        
+        data = data.encode('utf-8')
+        return data
+        
+    def send_request(self):
+        sock.connect((self.host, 80))
+        data = self.get_encoded_data()
+
+        sock.send(data)
+
+        response = ''
+        response = sock.recv(4096).decode()
+
+        return response
+        
+
+if __name__ == '__main__':
+    args = sys.argv[1:]
+    c = cCurl(args)
+    response = c.send_request()
+    c.show_response(response)
